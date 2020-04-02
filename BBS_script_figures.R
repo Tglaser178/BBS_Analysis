@@ -2,7 +2,7 @@ library(tidyverse)
 
 # Read in Filtered Data for Species of Interest
 #bbs.dat<- read.csv("BBS_(Species)_BCR.filtered.csv")
-bbs.dat<- read.csv("BBS_WIWA_BCR.filtered.csv")
+bbs.dat<- read.csv("./data/BBS_WIWA_BCR.filtered.csv")
 
 
 # Create new dataframe that summarizes the data by BCR and Year, and produces a new column that averages the number of birds for each route
