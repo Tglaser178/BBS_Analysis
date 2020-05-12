@@ -25,27 +25,28 @@ out<-list()
 # 1 - Read in and process BBS data. 
 #-----------------------------------------------------------------------------
 
-# read in filtered data for species
+### read in filtered data for species
 bbs.dat <- read.csv("./data/BBS_WIWA_BCR.filtered.csv")
+#Create unique values for filtered BCRs
 BCR=unique(bbs.dat$BCR)
 
-# Create unique route field 
+### Create unique route field 
 bbs.dat$Route <- factor(do.call(paste, list(bbs.dat$BCR, bbs.dat$Route, sep=".")))  
 # select years of interest
 bbs.dat <- bbs.dat[bbs.dat$Year>(YEAR[1]-1) & bbs.dat$Year<(YEAR[2]+1),]
-
+# Save number of routes to "out" list
 out$nRoutes<-length(unique(bbs.dat$Route))
 
-#observer data
+### Observer data
 bbs.dat$Rte <- factor(do.call(paste, list(bbs.dat$State, bbs.dat$Route, sep=".")))
-# observer ID based on route x observer
+# Create Observer ID based on route x observer
 bbs.dat$obs <- factor(do.call(paste, list(bbs.dat$Obs, bbs.dat$Rte, sep="."))) 
-
-# fill in zeros for years where route counted with no obs.
-bbs.dat$SpeciesTotal[is.na(bbs.dat$SpeciesTotal)] <- 0 
 # create first year indicator variable
 bbs.dat$fy <- ifelse(duplicated(bbs.dat$ObsN), 0, 1) 
 
+
+# fill in zeros for years where route counted with no observations of species
+bbs.dat$SpeciesTotal[is.na(bbs.dat$SpeciesTotal)] <- 0 
 
 # Extract Coordinates
 bbs.locs <- bbs.dat[,c("Longitude","Latitude")] 
@@ -54,16 +55,17 @@ bbs.locs <- bbs.dat[,c("Longitude","Latitude")]
 # 2 - Read in and process spatial data, match to BBS data
 #-----------------------------------------------------------------------------
 
-# Read in regions = BCR shapefile
+### Read in regions = BCR shapefile
 REGIONS <- readOGR(dsn="./data/bcr_terrestrial_shape",layer="BCR_Terrestrial_master_International")
 #regions.proj=proj4string(REGIONS)
 #project to Albers equal area so areas calculated will be in sq meters
 REGIONS<-spTransform(REGIONS,CRS("+proj=aea +ellps=WGS84 +lat_1=29.5 +lat_2=45.5"))
 
+# Apply area to each filtered BCR
 bbs.BCR=BCR
 BCR=data.frame(BCR=bbs.BCR, AreaBCR=sapply(1:length(BCR),function(i){gArea(subset(REGIONS,BCR==BCR[i]),byid=T)}))
 
-
+# Merge BCR areas with bbs dataframe
 BCR$BCR=as.factor(bbs.BCR)
 AreaBCR.df=as.data.frame(tapply(BCR$AreaBCR,BCR$BCR,sum,simplify=T))
 names(AreaBCR.df)<-c("AreaBCR")
@@ -71,16 +73,19 @@ AreaBCR.df$AreaBCR<-row.names(AreaBCR.df)
 BCR=merge(BCR,AreaBCR.df,by.x="BCR")
 bbs.dat=merge(bbs.dat,BCR,by.x="BCR")
 bbs.dat$BCR<-factor(bbs.dat$BCR,levels=as.character(unique(bbs.dat$BCR)))  # remove strata from which ther are no observations
+
+
 #-----------------------------------------------------------------------------
 #  Write BBS model to file. Code provided by J. Sauer. (via Jim Sarocco)
 #-----------------------------------------------------------------------------
-
 
 source("LinkSauerModel.R")
 
 #-----------------------------------------------------------------------------
 # 4 - prep/bundle data for bbs trend model, set inits, run model
 #-----------------------------------------------------------------------------
+
+### Set Parameters for BBS Model
 
 count <- bbs.dat$SpeciesTotal
 ncounts <- length(bbs.dat$SpeciesTotal)
@@ -93,7 +98,7 @@ nyears <- length(unique(year))
 strat <- as.numeric(bbs.dat$BCR)     
 nstrata <- length(unique(strat))
 
-
+# Set area weight for BCRs
 aw <- unique(subset(bbs.dat, select = c(BCR, AreaBCR)))
 aw <- aw[order(aw$BCR),]
 areaweight <- aw$AreaBCR
@@ -137,6 +142,10 @@ nt <- 3
 nb <- 10000
 nc <- 3
 
+ni <- 2
+nt <- 1
+nb <- 1
+nc <- 1
 
 print("Calling JAGS")
 bbs.out <- jags(jags.data, inits, parameters, "bbs_model_13.txt",n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, parallel=TRUE)
