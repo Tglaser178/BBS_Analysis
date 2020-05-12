@@ -33,9 +33,11 @@ BCR=unique(bbs.dat$BCR)
 ### Create unique route field 
 bbs.dat$Route <- factor(do.call(paste, list(bbs.dat$BCR, bbs.dat$Route, sep=".")))  
 # select years of interest
-bbs.dat <- bbs.dat[bbs.dat$Year>(YEAR[1]-1) & bbs.dat$Year<(YEAR[2]+1),]
+#bbs.dat <- bbs.dat[bbs.dat$Year>(YEAR[1]-1) & bbs.dat$Year<(YEAR[2]+1),]
+
 # Save number of routes to "out" list
 out$nRoutes<-length(unique(bbs.dat$Route))
+
 
 ### Observer data
 bbs.dat$Rte <- factor(do.call(paste, list(bbs.dat$State, bbs.dat$Route, sep=".")))
@@ -95,7 +97,7 @@ nobservers <- length(unique(obser))
 firstyr <- bbs.dat$fy
 year <- as.numeric(factor(bbs.dat$Year))
 nyears <- length(unique(year))
-strat <- as.numeric(bbs.dat$BCR)     
+strat <- as.numeric(factor(bbs.dat$BCR))    
 nstrata <- length(unique(strat))
 
 # Set area weight for BCRs
@@ -124,6 +126,11 @@ nonzeroweight <- wts$nonzeroweight
 
 
 ### bundle data:
+nYears<-length(YEAR)-YEAR[1]
+jags.data <- list(count=count, year = year, obser=obser,  nyears=nyears, firstyr=firstyr, ncounts=ncounts, strat=strat,  
+                  nobservers=nobservers, nstrata=nstrata, areaweight=areaweight, nonzeroweight=nonzeroweight, fixedyear=round(nYears/2))
+
+### bundle data:
 nYears<-YEAR[2]-YEAR[1]
 jags.data <- list(count=count, year = year, obser=obser,  nyears=nyears, firstyr=firstyr, ncounts=ncounts, strat=strat,  
                   nobservers=nobservers, nstrata=nstrata, areaweight=areaweight, nonzeroweight=nonzeroweight, fixedyear=round(nYears/2))
@@ -134,17 +141,12 @@ inits <- function(){
 }  
 
 # Parameters monitored
-parameters <- c("eta", "n", "sdnoise", "sdobs", "CompIndex", "Bbar")
+parameters <- c("eta", "N", "sdnoise", "sdobs", "CompIndex", "Bbar")
 
 # Set MCMC to desired settings
-ni <- 50000
+ni <- 50
 nt <- 3
-nb <- 10000
-nc <- 3
-
-ni <- 2
-nt <- 1
-nb <- 1
+nb <- 10
 nc <- 1
 
 print("Calling JAGS")
